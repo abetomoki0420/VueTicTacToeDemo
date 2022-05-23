@@ -2,10 +2,12 @@ import { ref, computed } from "vue";
 import { COORDINATE_PATTERNS } from "./constants";
 import type { Board, Sign, Cell, Coordinate, Result } from "./types";
 
-export const useTitTacToe = () => {
+export const useTitTacToe = (initialSign = "tic" as Sign) => {
   const _board = ref<Board>([]);
+  const _currentSign = ref<Sign>(initialSign);
 
   const board = computed(() => _board.value);
+  const currentSign = computed(() => _currentSign.value);
 
   const getCell = (x: number, y: number) => {
     return board.value.find((cell) => {
@@ -13,7 +15,11 @@ export const useTitTacToe = () => {
     });
   };
 
-  const setSign = (x: number, y: number, sign: Sign) => {
+  const setSign = (x: number, y: number) => {
+    if (resultStatus.value.finished) {
+      return false;
+    }
+
     if (
       existsCell(board.value, {
         x,
@@ -28,8 +34,10 @@ export const useTitTacToe = () => {
         y,
         x,
       },
-      sign,
+      sign: _currentSign.value,
     });
+
+    _currentSign.value = _currentSign.value === "tic" ? "tac" : "tic";
 
     return true;
   };
@@ -38,10 +46,22 @@ export const useTitTacToe = () => {
     return judgeGame(board.value);
   });
 
+  const restart = () => {
+    if (!resultStatus.value.finished) {
+      return;
+    }
+
+    _board.value = [];
+    _currentSign.value = initialSign;
+  };
+
   return {
     board,
-    setSign,
+    currentSign,
     resultStatus,
+    getCell,
+    setSign,
+    restart,
   };
 };
 
@@ -91,9 +111,15 @@ export const judgeGame = (board: Board): Result => {
   });
 
   if (matchPatterns.length === 0) {
-    return {
-      finished: false,
-    };
+    if (board.length === 9) {
+      return {
+        finished: true,
+      };
+    } else {
+      return {
+        finished: false,
+      };
+    }
   }
 
   const matchSign = board.find((cell) => {
